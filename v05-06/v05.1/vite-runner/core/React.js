@@ -13,13 +13,14 @@ function createElement(type, props, ...children) {
     props: {
       ...props,
       children: children.map(child => {
-        return typeof child === "string" ? createTextNode(child) : child;
+        const isFn = typeof child === "string" || typeof child === "number";
+        return isFn ? createTextNode(child) : child;
       })
     }
   };
 }
 
-let shouldYield = false,
+let root = null,
   nextWorkOfUnit = {};
 function render(el, container) {
   nextWorkOfUnit = {
@@ -28,45 +29,34 @@ function render(el, container) {
       children: [el]
     }
   };
+  root = nextWorkOfUnit;
 }
 
 function workLoop(deadline) {
+  let shouldYield = false;
   while (!shouldYield && nextWorkOfUnit) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
-    const time = deadline.timeRemaining();
-    shouldYield = time < 1;
+    shouldYield = deadline.timeRemaining() < 1;
+  }
+  if (!nextWorkOfUnit && root) {
+    // nextWorkOfUnit===null,表示链表结束，结束时统一提交
+    commitRoot();
   }
   requestIdleCallback(workLoop);
-
-
-
-
-
-  
-  /* deadline.timeRemaining()返回一个 DOMHighResTimeStamp，其为浮点数，用来表示当前闲置周期的预估剩余毫秒数。如果闲置期已经结束，则其值为 0。你的回调函数可以重复调用该函数，以判断目前是否有足够的时间来执行更多的任务。 */
-  /* deadline.didTimeout; 布尔值，如果回调是因为超过了设置的超时时间而被执行的，则其值为 true。*/
 }
 
-/* 
-1. 创建 dom
-2.处理 props
-3. 转换成链表
-4. 处理当前任务后，返回下一个任务
-*/
-function performWorkOfUnit(fiber) {
-  if (!fiber.dom) {
-    // 1. 创建 dom
-    const dom = (fiber.dom = fiber.type === "TEXT_ELEMENT" ? document.createTextNode("") : document.createElement(fiber.type));
-    fiber.parent.dom.append(dom);
-    // 2.处理 props
-    Object.keys(fiber.props).forEach(key => {
-      if (key !== "children") {
-        dom[key] = fiber.props[key];
-      }
-    });
-  }
-  // 3. 转换成链表
-  const children = fiber.props.children;
+function createDom(type) {
+  return type === "TEXT_ELEMENT" ? document.createTextNode("") : document.createElement(type);
+}
+function updateProps(dom, props) {
+  Object.keys(props).forEach(key => {
+    if (key !== "children") {
+      dom[key] = props[key];
+    }
+  });
+}
+function initChildren(fiber, children) {
+  // const children = fiber.props.children; //拿到第一个 children,作为链表第一个点
   let prevChild = null;
   children.forEach((child, index) => {
     const newFiber = {
@@ -77,26 +67,57 @@ function performWorkOfUnit(fiber) {
       sibling: null,
       dom: null
     };
-    console.log("child", child);
     if (index === 0) {
-      fiber.child = newFiber;
+      fiber.child = newFiber; // 链表的 head
     } else {
-      // 此时prevChild === 上一个节点
-      prevChild.sibling = newFiber;
+      prevChild.sibling = newFiber; // 保存当前节点的前一个节点用于建立指针到下一个
     }
-    prevChild = newFiber;
+    prevChild = newFiber; // 更新 prevChild
   });
+}
 
-  // 4. 处理当前任务后，返回下一个任务
+function commitRoot() {
+  commitWork(root.child);
+  root = null;
+}
+
+function commitWork(fiber) {
+  if (!fiber) return;
+  let fiberParent = fiber.parent;
+  while (!fiberParent.dom) {
+    fiberParent = fiberParent.parent;
+  }
+  fiber.dom && fiberParent.dom.append(fiber.dom);
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
+}
+function performWorkOfUnit(fiber) {
+  const isFunCom = typeof fiber.type === "function";
+  let dom = null;
+  if (!isFunCom) {
+    if (!fiber.dom) {
+      // 1. 创建 Dom
+      dom = fiber.dom = createDom(fiber.type);
+      // 2. 处理 props
+      // console.log(typeof fiber.type, fiber.type);
+      fiber.type && updateProps(dom, fiber.props);
+    }
+  }
+  const children = isFunCom ? [fiber.type(fiber.props)] : fiber.props.children;
+  // 3.转换结构- 链表
+  initChildren(fiber, children);
+
+  //4.返回下一个执行 任务
   if (fiber.child) {
     return fiber.child;
   }
   if (fiber.sibling) {
     return fiber.sibling;
   }
-  return fiber.parent?.sibling;
+  return fiber.parent?.sibling; //父结点的兄弟节点
 }
 
+// 函数将在浏览器空闲时期被调用
 requestIdleCallback(workLoop);
 
 const React = {
