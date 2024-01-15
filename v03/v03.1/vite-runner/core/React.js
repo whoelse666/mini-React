@@ -36,13 +36,8 @@ function workLoop(deadline) {
     const time = deadline.timeRemaining();
     shouldYield = time < 1;
   }
-  requestIdleCallback(workLoop);
+  // requestIdleCallback(workLoop);
 
-
-
-
-
-  
   /* deadline.timeRemaining()返回一个 DOMHighResTimeStamp，其为浮点数，用来表示当前闲置周期的预估剩余毫秒数。如果闲置期已经结束，则其值为 0。你的回调函数可以重复调用该函数，以判断目前是否有足够的时间来执行更多的任务。 */
   /* deadline.didTimeout; 布尔值，如果回调是因为超过了设置的超时时间而被执行的，则其值为 true。*/
 }
@@ -98,6 +93,14 @@ function performWorkOfUnit(fiber) {
 }
 
 requestIdleCallback(workLoop);
+
+
+/* setTimeout(function () {
+  
+  const p = document.querySelector("#txt");
+  console.log("p", p);
+  p.textContent = "888"
+},5000) */
 
 const React = {
   render,
