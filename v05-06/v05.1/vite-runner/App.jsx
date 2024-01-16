@@ -6,24 +6,32 @@ function Counter({ num }) {
     </div>
   );
 }
+
 function CounterA() {
-  return <Counter />;
-}
-/* const  App = ()=> {
   return (
-    <div id="app">
-      <p style="color:pink">666</p>
-      hi mini-react from fiber
-      <Counter />
+    <div>
+      <Counter num={30} />
+      <Counter num={20} />
     </div>
   );
-} */
-const App = (
-  <div id="app">
-    <p style="color:pink">666</p>
+}
+
+  const  App = ()=> {
+  return (
+    <div id='app'>
+      <p style='color:pink'>666</p>
+      hi mini-react from fiber
+      <CounterA />
+    </div>
+  );
+}  
+
+/* const App = (
+  <div id='app'>
+    <p style='color:pink'>666</p>
     hi mini-react from fiber
-    <Counter num={10} />
+    <CounterA />
   </div>
-);
+); */
 
 export default App;
