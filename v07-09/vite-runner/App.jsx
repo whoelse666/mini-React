@@ -1,10 +1,20 @@
-import React from "./core/React.js";
+import React from "./core/React.js"
+let count = 1
 function Counter({ num }) {
   return (
     <div id="counter" style="color:yellow;width:300px;height:100px;background:blue">
-      count : {num}
+      count : {num} + {count}
+      <button id="btn" onClick={changeCount}>
+        click
+      </button>
     </div>
-  );
+  )
+}
+
+function changeCount() {
+  console.log("changeCount", count)
+  count++
+  React.update()
 }
 
 function CounterA() {
@@ -13,18 +23,18 @@ function CounterA() {
       <Counter num={30} />
       <Counter num={20} />
     </div>
-  );
+  )
 }
 
-  const  App = ()=> {
+const App = () => {
   return (
-    <div id='app'>
-      <p style='color:pink'>666</p>
+    <div id="app">
+      <p style="color:pink">666</p>
       hi mini-react from fiber
       <CounterA />
     </div>
-  );
-}  
+  )
+}
 
 /* const App = (
   <div id='app'>
@@ -34,4 +44,4 @@ function CounterA() {
   </div>
 ); */
 
-export default App;
+export default App
