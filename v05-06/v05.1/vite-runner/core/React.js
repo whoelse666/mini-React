@@ -122,9 +122,7 @@ function performWorkOfUnit(fiber) {
   } else {
     updateHostComponent(fiber);
   }
-  // 3.转换结构- 链表
-  const children = isFunCom ? [fiber.type(fiber.props)] : fiber.props.children;
-  initChildren(fiber, children);
+ 
 
   //4.返回下一个执行 任务
   if (fiber.child) {
