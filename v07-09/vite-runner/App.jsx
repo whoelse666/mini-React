@@ -10,9 +10,24 @@ function Counter({ num }) {
     </div>
   )
 }
+function Counter1({ num }) {
+  return (
+    <div id="counter">
+      count111 : {num} + {count}
+      <button id="btn" onClick={changeCount1}>
+        click
+      </button>
+    </div>
+  )
+}
 
 function changeCount() {
   console.log("changeCount", count)
+  count++
+  React.update()
+}
+function changeCount1() {
+  console.log("changeCount1", count)
   count++
   React.update()
 }
@@ -21,7 +36,7 @@ function CounterA() {
   return (
     <div>
       <Counter num={30} />
-      <Counter num={20} />
+      <Counter1 num={10} />
     </div>
   )
 }

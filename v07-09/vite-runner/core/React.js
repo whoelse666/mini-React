@@ -22,25 +22,27 @@ function createElement(type, props, ...children) {
 }
 
 function render(el, container) {
-  nextWorkOfUnit = {
+  nextFiberOfUnit = {
     dom: container,
     props: {
       children: [el]
     }
   }
-  root = nextWorkOfUnit
+  root = nextFiberOfUnit
   // requestIdleCallback(workLoop);
 }
 let root = null,
-  nextWorkOfUnit = null
+  currentRoot = null,
+  nextFiberOfUnit = null
 function workLoop(deadline) {
   let shouldYield = false
-  while (!shouldYield && nextWorkOfUnit) {
-    nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit)
+  // nextFiberOfUnit
+  while (!shouldYield && nextFiberOfUnit) {
+    nextFiberOfUnit = performWorkOfUnit(nextFiberOfUnit)
     shouldYield = deadline.timeRemaining() < 1
   }
-  if (!nextWorkOfUnit && root) {
-    // nextWorkOfUnit===null,表示链表结束，结束时统一提交
+  if (!nextFiberOfUnit && root) {
+    // nextFiberOfUnit===null,表示链表结束，结束时统一提交
     commitRoot(root)
   }
   requestIdleCallback(workLoop)
@@ -50,25 +52,72 @@ function createDom(type) {
   return type === "TEXT_ELEMENT" ? document.createTextNode("") : document.createElement(type)
 }
 
-function updateProps(dom, props) {
-  Object.keys(props).forEach(key => {
+function updateProps(dom, nextProps, prevProps) {
+  // 1. 老的有 新的没有=== 删除节点
+  Object.keys(prevProps).forEach(key => {
     if (key !== "children") {
-      dom[key] = props[key]
+      if (!(key in nextProps)) {
+        dom && dom.removeAttribute(key)
+      }
     }
   })
+  //2.new 有 old 没有 添加
+  //3.new 有 old 有 ===修改
+  Object.keys(nextProps).forEach(key => {
+    if (key !== "children") {
+      if (nextProps[key] !== prevProps[key]) {
+        if (key.startsWith("on")) {
+          dom.addEventListener(key.slice(2).toLowerCase(), nextProps[key])
+        } else {
+          dom[key] = nextProps[key]
+        }
+      }
+    }
+  })
+
+  // update
+}
+
+function update(dom, props) {
+  nextFiberOfUnit = {
+    dom: currentRoot.dom,
+    props: currentRoot.props,
+    alternate: currentRoot
+  }
+
+  root = nextFiberOfUnit
 }
 
 function initChildren(fiber, children) {
   // const children = fiber.props.children; //拿到第一个 children,作为链表第一个点
-  let prevChild = null
+  let oldFiber = fiber.alternate?.child
+  let prevChild = null,
+    newFiber = null
   children.forEach((child, index) => {
-    const newFiber = {
-      type: child.type,
-      props: child.props,
-      child: null,
-      parent: fiber,
-      sibling: null,
-      dom: null
+    const isSameType = oldFiber && oldFiber.type === child.type
+    isSameType
+      ? (newFiber = {
+          type: child.type,
+          props: child.props,
+          child: null,
+          parent: fiber,
+          sibling: null,
+          dom: oldFiber.dom,
+          effectTag: "update",
+          alternate: oldFiber
+        })
+      : (newFiber = {
+          type: child.type,
+          props: child.props,
+          child: null,
+          parent: fiber,
+          sibling: null,
+          dom: null,
+          effectTag: "placement"
+          // alternate: oldFiber
+        })
+    if (oldFiber) {
+      oldFiber = oldFiber.sibling
     }
     if (index === 0) {
       fiber.child = newFiber // 链表的 head
@@ -81,6 +130,7 @@ function initChildren(fiber, children) {
 
 function commitRoot(root) {
   commitWork(root.child)
+  currentRoot = root
   root = null
 }
 
@@ -90,7 +140,13 @@ function commitWork(fiber) {
   while (!fiberParent.dom) {
     fiberParent = fiberParent.parent
   }
-  fiber.dom && fiberParent.dom.append(fiber.dom)
+
+  if (fiber.effectTag === "update") {
+    updateProps(fiber.dom, fiber.props, fiber.alternate?.props)
+  }
+  {
+    fiber.dom && fiberParent.dom.append(fiber.dom)
+  }
   commitWork(fiber.child)
   commitWork(fiber.sibling)
 }
@@ -108,7 +164,7 @@ function updateHostComponent(fiber) {
     // 1. 创建 Dom
     const dom = (fiber.dom = createDom(fiber.type))
     // 2. 处理 props
-    updateProps(dom, fiber.props)
+    updateProps(dom, fiber.props, {})
   }
   const children = fiber.props.children
   initChildren(fiber, children)
@@ -116,25 +172,21 @@ function updateHostComponent(fiber) {
 
 function performWorkOfUnit(fiber) {
   const isFunCom = typeof fiber.type === "function"
-
   if (isFunCom) {
     updateFunctionComponent(fiber)
   } else {
     updateHostComponent(fiber)
   }
-/*   // 3.转换结构- 链表
-  const children = isFunCom ? [fiber.type(fiber.props)] : fiber.props.children
-  initChildren(fiber, children) */
 
   //4.返回下一个执行 任务
   if (fiber.child) {
     return fiber.child
   }
   /*   if (fiber.sibling) {
-    return fiber.sibling;
+    return fiber.sibling
   }
-  return fiber.parent?.sibling; //父结点的兄弟节点 */
-
+  return fiber.parent?.sibling //父结点的兄弟节点
+ */
   let nextFiber = fiber
   while (nextFiber) {
     if (nextFiber.sibling) {
@@ -148,6 +200,7 @@ function performWorkOfUnit(fiber) {
 requestIdleCallback(workLoop)
 
 const React = {
+  update,
   render,
   createElement
 }
