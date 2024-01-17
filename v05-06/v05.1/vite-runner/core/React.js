@@ -130,18 +130,18 @@ function performWorkOfUnit(fiber) {
   if (fiber.child) {
     return fiber.child;
   }
-  if (fiber.sibling) {
+/*   if (fiber.sibling) {
     return fiber.sibling;
   }
-  return fiber.parent?.sibling; //父结点的兄弟节点
+  return fiber.parent?.sibling; //父结点的兄弟节点 */
 
-  /*  let nextFiber = fiber;
+ let nextFiber = fiber
   while (nextFiber) {
     if (nextFiber.sibling) {
-      return nextFiber.sibling;
+      return nextFiber.sibling
     }
-    nextFiber = nextFiber.parent;
-  } */
+    nextFiber = nextFiber.parent
+  }
 }
 
 // 函数将在浏览器空闲时期被调用
