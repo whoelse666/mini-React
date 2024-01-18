@@ -1,62 +1,101 @@
 import React from './core/React.js';
 let count = 1;
+let props = { id: 'dt' };
+
 function Counter({ num }) {
+  console.log('000');
+  const update = React.update();
+  function changeCount() {
+    count++;
+    update();
+  }
   return (
-    <div id='counter' style='color:yellow;width:300px;height:100px;background:blue'>
-      count : {num} + {count}
+    <div id='counter'>
+      <hr />
+      组件 000 --- count : {num} + {count}
+      <Counter2></Counter2>
       <button id='btn' onClick={changeCount}>
         click
       </button>
+      <hr />
     </div>
   );
 }
 function Counter1({ num }) {
+  console.log('111');
+  const update = React.update();
+  function changeCount1() {
+    count++;
+    props = {};
+    update();
+  }
   return (
-    <div id='counter'>
-      count111 : {num} + {count}
+    <div {...props}>
+      组件 111 --- {num} + {count}
       <button id='btn' onClick={changeCount1}>
-        click
+        changeCount1
       </button>
     </div>
   );
 }
-
-function changeCount() {
-  console.log('changeCount', count);
-  count++;
-  React.update();
-}
-function changeCount1() {
-  console.log('changeCount1', count);
-  count++;
-  React.update();
+function Counter2({ num }) {
+  console.log('222');
+  const update = React.update();
+  function changeCount2() {
+    count++;
+    update();
+  }
+  return (
+    <div>
+      组件 000 --- count : {num} + {count}
+      <button onClick={changeCount2}>changeCount2</button>
+    </div>
+  );
 }
 
 let isDivDom = false;
-function divDom() {
-  return <div id='divDom'>divDom</div>;
+function Foo() {
+  return <div id='Foo'>divDom</div>;
 }
 function Dom() {
   let pDom = <p id='pDom'>pDom</p>;
+  let divDom = <p id='divDom'>divDom</p>;
+  const update = React.update();
+
+  function changeDom() {
+    isDivDom = !isDivDom;
+    update();
+  }
+
   return (
-    <div>
+    <div id='aaa'>
+      <hr />
+      <h2>day05</h2>
+      {isDivDom && pDom}
+      {/* <div> {isDivDom && pDom}</div> */}
       <button id='changeDom' onClick={changeDom}>
         changeDom
       </button>
-      <div id='divDom'>{isDivDom ? <divDom></divDom> : pDom}</div>
+      {/* <div id='last'>{isDivDom ? <Foo></Foo> : pDom}</div> */}
     </div>
   );
 }
-function changeDom() {
-  isDivDom = !isDivDom;
-  React.update();
-}
-
+let counterA = 111;
 function CounterA() {
+  const update = React.update();
+  console.log('counterA');
+  function changeCounterA() {
+    counterA++;
+    update();
+  }
+
   return (
     <div>
-      {/* <Counter num={30} />
-      <Counter1 num={10} /> */}
+      {counterA}
+      <button id='counterA' onClick={changeCounterA}>
+        changeCounterA
+      </button>
+      <Counter num={20} />
       <Counter1 num={10} />
     </div>
   );
@@ -67,8 +106,8 @@ const App = () => {
     <div id='app'>
       {/* <p style='color:pink'>666</p>
       hi mini-react from fiber */}
-      <Counter1 num={10} />
-      <Dom />
+      <CounterA />
+      {/* <Dom /> */}
     </div>
   );
 };
