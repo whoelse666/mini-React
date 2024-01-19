@@ -2,22 +2,26 @@ import React from './core/React.js';
 let count = 1;
 let props = { id: 'dt' };
 let counterA = 111;
-function Counter({ num }) {
+function Counter() {
   console.log('000');
-  const update = React.update();
+  //  const update = React.update();
+  const [count1, setCount1] = React.useState(10);
+  const [bar, setBar] = React.useState('bar');
+
   function changeCount() {
-    count++;
-    update();
+    /* count++;
+    update(); */ setCount1(c => c + 1);
+    setBar(s => s + 'bar');
   }
   return (
     <div id='counter'>
-      <hr />
-      组件 000 --- count : {num} + {count} <Counter2 />
+      {' '}
+      <hr /> <p> {bar}</p> 组件 000 : count1=== :{count1} {/* <Counter2 /> */}{' '}
       <button id='btn' onClick={changeCount}>
-        click
-      </button> 
-      
-      <hr />
+        {' '}
+        click useState{' '}
+      </button>{' '}
+      <hr />{' '}
     </div>
   );
 }
@@ -31,10 +35,12 @@ function Counter1({ num }) {
   }
   return (
     <div {...props}>
-      组件 111 --- {num} + {count}
+      {' '}
+      组件 111 --- {num} + {count}{' '}
       <button id='btn' onClick={changeCount1}>
-        changeCount1
-      </button>
+        {' '}
+        changeCount1{' '}
+      </button>{' '}
     </div>
   );
 }
@@ -47,12 +53,11 @@ function Counter2({ num }) {
   }
   return (
     <div>
-      组件 222 --- count : {num} + {count}
-      <button onClick={changeCount2}>点这里有bug</button>
+      {' '}
+      组件 222 --- count {count} <button onClick={changeCount2}>点这里有bug</button>{' '}
     </div>
   );
 }
-
 function CounterA() {
   const update = React.update();
   console.log('counterA');
@@ -60,25 +65,24 @@ function CounterA() {
     counterA++;
     update();
   }
-
   return (
     <div>
-      {counterA}
+      {' '}
+      {counterA}{' '}
       <button id='counterA' onClick={changeCounterA}>
-        changeCounterA
-      </button>
-      <Counter num={20} />
-      <Counter1 num={10} />
+        {' '}
+        changeCounterA{' '}
+      </button>{' '}
+      <Counter num={20} /> <Counter1 num={10} />{' '}
     </div>
   );
 }
-
 const App = () => {
   return (
     <div id='app'>
-      <CounterA />
+      {' '}
+      {/* <CounterA /> */} <Counter />{' '}
     </div>
   );
 };
-
 export default App;
