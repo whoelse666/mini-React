@@ -1,7 +1,7 @@
 import React from './core/React.js';
 let count = 1;
 let props = { id: 'dt' };
-
+let counterA = 111;
 function Counter({ num }) {
   console.log('000');
   const update = React.update();
@@ -12,11 +12,11 @@ function Counter({ num }) {
   return (
     <div id='counter'>
       <hr />
-      组件 000 --- count : {num} + {count}
-      <Counter2></Counter2>
+      组件 000 --- count : {num} + {count} <Counter2 />
       <button id='btn' onClick={changeCount}>
         click
-      </button>
+      </button> 
+      
       <hr />
     </div>
   );
@@ -47,40 +47,12 @@ function Counter2({ num }) {
   }
   return (
     <div>
-      组件 000 --- count : {num} + {count}
-      <button onClick={changeCount2}>changeCount2</button>
+      组件 222 --- count :{count}
+      <button onClick={changeCount2}>点这里有bug</button>
     </div>
   );
 }
 
-let isDivDom = false;
-function Foo() {
-  return <div id='Foo'>divDom</div>;
-}
-function Dom() {
-  let pDom = <p id='pDom'>pDom</p>;
-  let divDom = <p id='divDom'>divDom</p>;
-  const update = React.update();
-
-  function changeDom() {
-    isDivDom = !isDivDom;
-    update();
-  }
-
-  return (
-    <div id='aaa'>
-      <hr />
-      <h2>day05</h2>
-      {isDivDom && pDom}
-      {/* <div> {isDivDom && pDom}</div> */}
-      <button id='changeDom' onClick={changeDom}>
-        changeDom
-      </button>
-      {/* <div id='last'>{isDivDom ? <Foo></Foo> : pDom}</div> */}
-    </div>
-  );
-}
-let counterA = 111;
 function CounterA() {
   const update = React.update();
   console.log('counterA');
@@ -104,20 +76,9 @@ function CounterA() {
 const App = () => {
   return (
     <div id='app'>
-      {/* <p style='color:pink'>666</p>
-      hi mini-react from fiber */}
       <CounterA />
-      {/* <Dom /> */}
     </div>
   );
 };
-
-/* const App = (
-  <div id='app'>
-    <p style='color:pink'>666</p>
-    hi mini-react from fiber
-    <CounterA />
-  </div>
-); */
 
 export default App;
