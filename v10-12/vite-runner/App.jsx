@@ -1,14 +1,6 @@
 import React from './core/React.js';
 let count = 1;
-let props = { id: 'dt' };
-let counterA = 111;
 function Counter({ num }) {
-  console.log('000');
-  const update = React.update();
-  function changeCount() {
-    count++;
-    update();
-  }
   return (
     <div id='counter'>
       <hr />
@@ -22,18 +14,11 @@ function Counter({ num }) {
   );
 }
 function Counter1({ num }) {
-  console.log('111');
-  const update = React.update();
-  function changeCount1() {
-    count++;
-    props = {};
-    update();
-  }
   return (
-    <div {...props}>
-      组件 111 --- {num} + {count}
+    <div id='counter'>
+      count111 : {num} + {count}
       <button id='btn' onClick={changeCount1}>
-        changeCount1
+        click
       </button>
     </div>
   );
@@ -61,13 +46,11 @@ function CounterA() {
     update();
   }
 
+function CounterA() {
   return (
     <div>
-      {counterA}
-      <button id='counterA' onClick={changeCounterA}>
-        changeCounterA
-      </button>
-      <Counter num={20} />
+      {/* <Counter num={30} />
+      <Counter1 num={10} /> */}
       <Counter1 num={10} />
     </div>
   );
