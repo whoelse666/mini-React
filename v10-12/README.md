@@ -1,4 +1,4 @@
 # mini-React
-统一提交&实现 function component 
+击杀 update children
 
 
