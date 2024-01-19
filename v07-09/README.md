@@ -1,4 +1,3 @@
 # mini-React
-统一提交&实现 function component 
-
+进军 vdom 的更新
 
