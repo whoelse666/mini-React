@@ -43,27 +43,57 @@ function workLoop(deadline) {
   let shouldYield = false;
   while (!shouldYield && nextWorkOfUnit) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
-
     if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
       nextWorkOfUnit = undefined;
     }
-
     shouldYield = deadline.timeRemaining() < 1;
   }
-
   if (!nextWorkOfUnit && wipRoot) {
     commitRoot();
   }
-
   requestIdleCallback(workLoop);
 }
 
 function commitRoot() {
   deletions.forEach(commitDeletion);
   commitWork(wipRoot.child);
+  commitEffectHooks();
   currentRoot = wipRoot;
   wipRoot = null;
   deletions = [];
+}
+function commitEffectHooks() {
+  function run(fiber) {
+    if (!fiber) return;
+
+    if (!fiber.alternate) {
+      // 初始化必定执行
+      fiber.effectHooks?.forEach(hook => {
+        hook.cleanup = hook.callback();
+      });
+    } else {
+      fiber.effectHooks?.forEach((newHook, index) => {
+        if (newHook?.deps.length <= 0) return;
+        const oldEffectHook = fiber.alternate?.effectHooks[index];
+        if (oldEffectHook?.deps.length <= 0) return;
+        const needUpdate = oldEffectHook?.deps.some((oldDep, i) => {
+          return oldDep !== newHook?.deps[i];
+        });
+        needUpdate && (newHook.cleanup = newHook?.callback());
+      });
+    }
+    run(fiber.child);
+    run(fiber.sibling);
+  }
+  function runCleanUp(fiber) {
+    if (!fiber) return;
+    fiber.alternate?.effectHooks?.forEach((hook, index) => {
+      if (hook.deps.length <= 0) return;
+      hook.cleanup && hook.cleanup();
+    });
+  }
+  runCleanUp(wipRoot);
+  run(wipRoot);
 }
 
 function commitDeletion(fiber) {
@@ -102,17 +132,6 @@ function createDom(type) {
 }
 
 function updateProps(dom, nextProps, prevProps) {
-  // Object.keys(nextProps).forEach((key) => {
-  //   if (key !== "children") {
-  //     if (key.startsWith("on")) {
-  //       const eventType = key.slice(2).toLowerCase();
-  //       dom.addEventListener(eventType, nextProps[key]);
-  //     } else {
-  //       dom[key] = nextProps[key];
-  //     }
-  //   }
-  // });
-  // {id: "1"} {}
   // 1. old 有  new 没有 删除
   Object.keys(prevProps).forEach(key => {
     if (key !== 'children') {
@@ -202,6 +221,7 @@ function reconcileChildren(fiber, children) {
 function updateFunctionComponent(fiber) {
   stateHooks = [];
   stateHookIndex = 0;
+  effectHooks = [];
   wipFiber = fiber;
   const children = [fiber.type(fiber.props)];
   reconcileChildren(fiber, children);
@@ -220,7 +240,6 @@ function updateHostComponent(fiber) {
 
 function performWorkOfUnit(fiber) {
   const isFunctionComponent = typeof fiber.type === 'function';
-
   if (isFunctionComponent) {
     updateFunctionComponent(fiber);
   } else {
@@ -248,11 +267,6 @@ function update() {
       ...currentFiber,
       alternate: currentFiber
     };
-    // wipRoot = {
-    //   dom: currentRoot.dom,
-    //   props: currentRoot.props,
-    //   alternate: currentRoot,
-    // };
     nextWorkOfUnit = wipRoot;
   };
 }
@@ -262,7 +276,7 @@ function useState(initial) {
   const oldHook = currentFiber.alternate?.stateHooks[stateHookIndex];
   const stateHook = {
     state: oldHook ? oldHook.state : initial,
-    queue: oldHook ? oldHook.queue : []
+    queue: oldHook ? oldHook.queue : [] //统一批量处理useState里的action
   };
   stateHook.queue.forEach(action => {
     stateHook.state = action(stateHook.state);
@@ -276,7 +290,6 @@ function useState(initial) {
     if (eagerState === stateHook.state) {
       return;
     }
-    // stateHook.state = action(stateHook.state);
     stateHook.queue.push(action);
     wipRoot = {
       ...currentFiber,
@@ -287,10 +300,23 @@ function useState(initial) {
   return [stateHook.state, setState];
 }
 
+let effectHooks;
+function useEffect(callback, deps) {
+  const effectHook = {
+    callback,
+    deps,
+    cleanup: null
+  };
+
+  effectHooks.push(effectHook);
+  wipFiber.effectHooks = effectHooks;
+}
+
 const React = {
   update,
   render,
   useState,
+  useEffect,
   createElement
 };
 
