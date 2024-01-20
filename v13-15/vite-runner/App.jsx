@@ -8,23 +8,41 @@ function Counter() {
   const [count1, setCount1] = React.useState(10);
   const [bar, setBar] = React.useState('bar');
 
-  function changeCount() {
-    /* count++;
-    update(); */ setCount1(c => c + 1);
-    setBar(s => s + 'bar');
-  }
   return (
     <div id='counter'>
-      {' '}
-      <hr /> <p> {bar}</p> 组件 000 : count1=== :{count1} {/* <Counter2 /> */}{' '}
-      <button id='btn' onClick={changeCount}>
-        {' '}
-        click useState{' '}
-      </button>{' '}
-      <hr />{' '}
+      <hr />
+      <div>{bar}</div>
+      组件 000 : count1=== :<div> {count1}</div> {/* <Counter2 /> */}
+      <button id='btn' onClick={() => setCount1(c => c + 1)}>
+        click setCount1
+      </button>
+      <button id='btn' onClick={() => setBar(b => 'bar')}>
+        click setBar
+      </button>
+      <hr />
     </div>
   );
 }
+
+function Foo() {
+  console.log('re foo');
+  const [count, setCount] = React.useState(10);
+  const [bar, setBar] = React.useState('bar');
+  function handleClick() {
+    setCount(c => c + 1);
+    setBar(s => s + 'bar');
+  }
+
+  return (
+    <div>
+      <h1>foo</h1>
+      {count}
+      <div>{bar}</div>
+      <button onClick={handleClick}>click</button>
+    </div>
+  );
+}
+
 function Counter1({ num }) {
   console.log('111');
   const update = React.update();
@@ -35,12 +53,10 @@ function Counter1({ num }) {
   }
   return (
     <div {...props}>
-      {' '}
-      组件 111 --- {num} + {count}{' '}
+      组件 111 --- {num} + {count}
       <button id='btn' onClick={changeCount1}>
-        {' '}
-        changeCount1{' '}
-      </button>{' '}
+        changeCount1
+      </button>
     </div>
   );
 }
@@ -53,8 +69,7 @@ function Counter2({ num }) {
   }
   return (
     <div>
-      {' '}
-      组件 222 --- count {count} <button onClick={changeCount2}>点这里有bug</button>{' '}
+      组件 222 --- count {count} <button onClick={changeCount2}>点这里有bug</button>
     </div>
   );
 }
@@ -67,21 +82,18 @@ function CounterA() {
   }
   return (
     <div>
-      {' '}
-      {counterA}{' '}
+      {counterA}
       <button id='counterA' onClick={changeCounterA}>
-        {' '}
-        changeCounterA{' '}
-      </button>{' '}
-      <Counter num={20} /> <Counter1 num={10} />{' '}
+        changeCounterA
+      </button>
+      <Counter num={20} /> <Counter1 num={10} />
     </div>
   );
 }
 const App = () => {
   return (
     <div id='app'>
-      {' '}
-      {/* <CounterA /> */} <Counter />{' '}
+      {/* <CounterA /> */} <Counter />
     </div>
   );
 };
