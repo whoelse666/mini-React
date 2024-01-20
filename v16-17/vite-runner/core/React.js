@@ -65,7 +65,6 @@ function commitRoot() {
 function commitEffectHooks() {
   function run(fiber) {
     if (!fiber) return;
-
     if (!fiber.alternate) {
       // 初始化必定执行
       fiber.effectHooks?.forEach(hook => {
@@ -87,6 +86,8 @@ function commitEffectHooks() {
   }
   function runCleanUp(fiber) {
     if (!fiber) return;
+    console.log('fiber.effectHooks', fiber.effectHooks);
+    // runCleanUp 在run 之前执行,当前 fiber.effectHooks.cleanup还没有
     fiber.alternate?.effectHooks?.forEach((hook, index) => {
       if (hook.deps.length <= 0) return;
       hook.cleanup && hook.cleanup();
