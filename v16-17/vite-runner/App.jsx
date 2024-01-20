@@ -5,13 +5,25 @@ function Counter() {
   const [bar, setBar] = React.useState('bar');
 
   React.useEffect(() => {
-    console.log('useEffect init111');
+    console.log('useEffect 000');
+    return () => {
+      console.log('cleanup   0');
+    };
   }, []);
   React.useEffect(() => {
     // 相当于 componentDidMount、componentDidUpdate
-    console.log('useEffect init222', count1, bar);
+    return () => {
+      console.log('cleanup   1', count1);
+    };
     // }, [count1,bar]);
   }, [count1]);
+  React.useEffect(() => {
+    console.log('------------------------');
+    return () => {
+      console.log('cleanup   2', count1);
+      console.log('------------------------');
+    };
+  }, [count1, bar]);
 
   return (
     <div id='counter'>

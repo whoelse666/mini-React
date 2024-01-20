@@ -69,7 +69,7 @@ function commitEffectHooks() {
     if (!fiber.alternate) {
       // 初始化必定执行
       fiber.effectHooks?.forEach(hook => {
-        hook.callback();
+        hook.cleanup = hook.callback();
       });
     } else {
       fiber.effectHooks?.forEach((newHook, index) => {
@@ -79,12 +79,20 @@ function commitEffectHooks() {
         const needUpdate = oldEffectHook?.deps.some((oldDep, i) => {
           return oldDep !== newHook?.deps[i];
         });
-        needUpdate && newHook?.callback();
+        needUpdate && (newHook.cleanup = newHook?.callback());
       });
     }
     run(fiber.child);
     run(fiber.sibling);
   }
+  function runCleanUp(fiber) {
+    if (!fiber) return;
+    fiber.alternate?.effectHooks?.forEach((hook, index) => {
+      if (hook.deps.length <= 0) return;
+      hook.cleanup && hook.cleanup();
+    });
+  }
+  runCleanUp(wipRoot);
   run(wipRoot);
 }
 
@@ -268,7 +276,7 @@ function useState(initial) {
   const oldHook = currentFiber.alternate?.stateHooks[stateHookIndex];
   const stateHook = {
     state: oldHook ? oldHook.state : initial,
-    queue: oldHook ? oldHook.queue : []
+    queue: oldHook ? oldHook.queue : [] //统一批量处理useState里的action
   };
   stateHook.queue.forEach(action => {
     stateHook.state = action(stateHook.state);
@@ -296,7 +304,8 @@ let effectHooks;
 function useEffect(callback, deps) {
   const effectHook = {
     callback,
-    deps
+    deps,
+    cleanup: null
   };
 
   effectHooks.push(effectHook);
