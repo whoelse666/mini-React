@@ -43,27 +43,44 @@ function workLoop(deadline) {
   let shouldYield = false;
   while (!shouldYield && nextWorkOfUnit) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
-
     if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
       nextWorkOfUnit = undefined;
     }
-
     shouldYield = deadline.timeRemaining() < 1;
   }
-
   if (!nextWorkOfUnit && wipRoot) {
     commitRoot();
   }
-
   requestIdleCallback(workLoop);
 }
 
 function commitRoot() {
   deletions.forEach(commitDeletion);
   commitWork(wipRoot.child);
+  commitEffectHook();
   currentRoot = wipRoot;
   wipRoot = null;
   deletions = [];
+}
+function commitEffectHook() {
+  console.log('commitEffectHook');
+  function run(fiber) {
+    if (!fiber) return;
+
+    if (!fiber.alternate) {
+      // 初始化必定执行
+      fiber.effectHook?.callback();
+    } else {
+      const oldEffectHook = fiber.alternate?.effectHook;
+      const needUpdate = oldEffectHook?.deps.some((oldDep, index) => {
+        return oldDep !== fiber.effectHook?.deps[index];
+      });
+      needUpdate && fiber.effectHook?.callback();
+    }
+    run(fiber.child);
+    run(fiber.sibling);
+  }
+  run(wipRoot);
 }
 
 function commitDeletion(fiber) {
@@ -102,17 +119,6 @@ function createDom(type) {
 }
 
 function updateProps(dom, nextProps, prevProps) {
-  // Object.keys(nextProps).forEach((key) => {
-  //   if (key !== "children") {
-  //     if (key.startsWith("on")) {
-  //       const eventType = key.slice(2).toLowerCase();
-  //       dom.addEventListener(eventType, nextProps[key]);
-  //     } else {
-  //       dom[key] = nextProps[key];
-  //     }
-  //   }
-  // });
-  // {id: "1"} {}
   // 1. old 有  new 没有 删除
   Object.keys(prevProps).forEach(key => {
     if (key !== 'children') {
@@ -220,7 +226,6 @@ function updateHostComponent(fiber) {
 
 function performWorkOfUnit(fiber) {
   const isFunctionComponent = typeof fiber.type === 'function';
-
   if (isFunctionComponent) {
     updateFunctionComponent(fiber);
   } else {
@@ -248,11 +253,6 @@ function update() {
       ...currentFiber,
       alternate: currentFiber
     };
-    // wipRoot = {
-    //   dom: currentRoot.dom,
-    //   props: currentRoot.props,
-    //   alternate: currentRoot,
-    // };
     nextWorkOfUnit = wipRoot;
   };
 }
@@ -276,7 +276,6 @@ function useState(initial) {
     if (eagerState === stateHook.state) {
       return;
     }
-    // stateHook.state = action(stateHook.state);
     stateHook.queue.push(action);
     wipRoot = {
       ...currentFiber,
@@ -287,10 +286,19 @@ function useState(initial) {
   return [stateHook.state, setState];
 }
 
+function useEffect(callback, deps) {
+  const effectHook = {
+    callback,
+    deps
+  };
+  wipFiber.effectHook = effectHook;
+}
+
 const React = {
   update,
   render,
   useState,
+  useEffect,
   createElement
 };
 
