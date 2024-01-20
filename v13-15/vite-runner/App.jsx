@@ -16,7 +16,13 @@ function Counter() {
       <button id='btn' onClick={() => setCount1(c => c + 1)}>
         click setCount1
       </button>
-      <button id='btn' onClick={() => setBar(b => 'bar')}>
+      <button
+        id='btn'
+        onClick={() => {
+          console.log('新旧值相同,不执行');
+          return setBar(b => 'bar');
+        }}
+      >
         click setBar
       </button>
       <hr />
