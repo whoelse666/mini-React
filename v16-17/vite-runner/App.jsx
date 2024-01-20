@@ -4,12 +4,13 @@ function Counter() {
   const [count1, setCount1] = React.useState(10);
   const [bar, setBar] = React.useState('bar');
 
-  // React.useEffect(() => {
-  //   console.log('useEffect init111');
-  // }, []);
   React.useEffect(() => {
-    console.log('useEffect init222', count1);
+    console.log('useEffect init111');
+  }, []);
+  React.useEffect(() => {
     // 相当于 componentDidMount、componentDidUpdate
+    console.log('useEffect init222', count1, bar);
+    // }, [count1,bar]);
   }, [count1]);
 
   return (
