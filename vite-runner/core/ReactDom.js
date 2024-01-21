@@ -1,4 +1,4 @@
-import React from "./React.jsx";
+import React from './React.js';
 const ReactDom = {
   createRoot(container) {
     return {
