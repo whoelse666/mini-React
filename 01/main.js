@@ -14,7 +14,7 @@ function createElement(type, props, children) {
     props: {
       ...props,
       children: children.map(child => {
-        if (typeof child === "string") {
+        if (typeof child === 'string') {
           return createTextNode(child);
         } else {
           return child;
@@ -26,7 +26,7 @@ function createElement(type, props, children) {
 
 function createTextNode(nodeValue) {
   return {
-    type: "TEXT_ELEMENT",
+    type: 'TEXT_ELEMENT',
     props: {
       nodeValue
       // children: []
@@ -35,9 +35,9 @@ function createTextNode(nodeValue) {
 }
 
 function render(el, container) {
-  const dom = el.type === "TEXT_ELEMENT" ? document.createTextNode("") : document.createElement(el.type);
+  const dom = el.type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(el.type);
   Object.keys(el.props).forEach(key => {
-    if (key !== "children") {
+    if (key !== 'children') {
       dom[key] = el.props[key];
     }
   });
@@ -46,6 +46,7 @@ function render(el, container) {
   container.appendChild(dom);
 }
 
-const App = createElement("div", { id: "app" }, ["hello ", "world"]);
-const root = document.querySelector("#root");
+const App = createElement('div', { id: 'app' }, ['hello ', 'world']);
+const App1 = createTextNode('world');
+const root = document.querySelector('#root');
 render(App, root);
