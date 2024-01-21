@@ -1,6 +1,3 @@
 # mini-React
-实现 React useEffect
-实现 cleanup
- 
-
-
+mini-React 副本练习
+review & write
