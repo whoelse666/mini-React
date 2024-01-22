@@ -1,12 +1,20 @@
-const createTextNode = nodeValue => ({ type: 'TEXT_ELEMENT', props: { nodeValue } });
+function createTextNode(text) {
+  return {
+    type: 'TEXT_ELEMENT',
+    props: {
+      nodeValue: text,
+      children: []
+    }
+  };
+}
 function createElement(type, props, ...children) {
   return {
     type,
     props: {
       ...props,
-      // children: children.map(child => (typeof child === 'string' ? createTextNode(child) : child)),
       children: children.map(child => {
-        return typeof child === 'string' ? createTextNode(child) : child;
+        const isTextNode = typeof child === 'string' || typeof child === 'number';
+        return isTextNode ? createTextNode(child) : child;
       })
     }
   };
@@ -74,7 +82,7 @@ function updateHostComponent(fiber) {
     // fiber.parent?.dom.append(dom);
   }
 
-  const children = fiber.props?.children;
+  const children = fiber.props.children;
   initChildren(fiber, children);
 }
 
@@ -109,7 +117,6 @@ function updateProps(dom, props) {
 }
 
 function createDom(type) {
-  console.log('type', type);
   if (type) {
     return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
   }
