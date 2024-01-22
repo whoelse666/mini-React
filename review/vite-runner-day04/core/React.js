@@ -20,16 +20,18 @@ function createElement(type, props, ...children) {
   };
 }
 
-let root = null;
+let wipRoot = null;
+let currentRoot = null;
 let nextWorkOfUnit = null;
+
 function workLoop(deadline) {
   let shouldYield = false; //是否需要暂停次任务
   while (!shouldYield && nextWorkOfUnit) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
     shouldYield = deadline.timeRemaining() < 1; //剩余时间小于 1,就暂停
   }
-  if (!nextWorkOfUnit && root) {
-    commitRoot(root);
+  if (!nextWorkOfUnit && wipRoot) {
+    commitRoot(wipRoot);
   }
   requestIdleCallback(workLoop);
 }
@@ -38,7 +40,6 @@ requestIdleCallback(workLoop);
 
 function performWorkOfUnit(fiber) {
   // const isFunctionComponent = typeof fiber.type === 'function';
-
   if (typeof fiber.type === 'function') {
     updateFunctionComponent(fiber);
   } else {
@@ -51,10 +52,10 @@ function performWorkOfUnit(fiber) {
 }
 
 function commitRoot(fiberRoot) {
-  //  console.log('rootDom', rootDom);
   commitWork(fiberRoot.child);
-  root = null;
+  wipRoot = null;
 }
+
 function commitWork(fiber) {
   if (!fiber) return;
   let fiberParent = fiber.parent;
@@ -89,17 +90,33 @@ function updateHostComponent(fiber) {
 function initChildren(fiber, children) {
   //notes  3.转换链表,建立指针连接
   let prevChild = null;
-  // const children = fiber.props.children;
+  const oldFiber = fiber.alternate.child;
   children &&
     children.forEach((child, index) => {
-      const newFiber = {
-        type: child.type,
-        props: child.props,
-        parent: fiber,
-        sibling: null,
-        dom: null,
-        child: null
-      };
+      let newFiber;
+      if (isUpdate) {
+        newFiber = {
+          type: child.type,
+          props: child.props,
+          child: null,
+          parent: fiber,
+          sibling: null,
+          dom: oldFiber.dom,
+          effectTag: 'update',
+          alternate: oldFiber
+        };
+      } else {
+        newFiber = {
+          type: child.type,
+          props: child.props,
+          child: null,
+          parent: fiber,
+          sibling: null,
+          dom: null,
+          effectTag: 'placement'
+        };
+      }
+
       if (index === 0) {
         fiber.child = newFiber;
       } else {
@@ -108,10 +125,16 @@ function initChildren(fiber, children) {
       prevChild = newFiber;
     });
 }
+
 function updateProps(dom, props) {
   Object.keys(props).forEach(key => {
     if (key !== 'children') {
-      dom[key] = props[key];
+      if (key.startsWith('on')) {
+        const eventType = key.slice(2).toLowerCase();
+        dom.addEventListener(eventType, props[key]);
+      } else {
+        dom[key] = props[key];
+      }
     }
   });
 }
@@ -121,26 +144,31 @@ function createDom(type) {
     return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
   }
 }
+function update() {
+  console.log('update');
+  wipRoot = {
+    dom: currentRoot.dom,
+    props: currentRoot.props,
+    alternate: currentRoot
+  };
+
+  nextWorkOfUnit = wipRoot;
+}
 
 function render(el, container) {
-  nextWorkOfUnit = {
+  wipRoot = {
+    alternate: container,
     dom: container,
     props: {
       children: [el]
     }
   };
-  root = nextWorkOfUnit;
-  // requestIdleCallback(workLoop);
-
-  /*  const dom = createDom(el.type);
-  updateProps(dom, el.props);
-  const children = el.props.children;
-  children && children.forEach(child => render(child, dom));
-  container.append(dom); */
+  nextWorkOfUnit = wipRoot;
 }
 
 const React = {
   render,
+  update,
   createElement
 };
 
