@@ -27,6 +27,7 @@ let nextWorkOfUnit = null;
 function workLoop(deadline) {
   let shouldYield = false; //是否需要暂停次任务
   while (!shouldYield && nextWorkOfUnit) {
+    //每次处理完后返回下一个节点,先找 child ,没有child再找sibling,再找父节点的sibling,知道最后一个节点,返回null
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
     shouldYield = deadline.timeRemaining() < 1; //剩余时间小于 1,就暂停
   }
@@ -45,14 +46,16 @@ function performWorkOfUnit(fiber) {
   } else {
     updateHostComponent(fiber);
   }
-  //notes  4.返回下一个任务 (子节点 or 兄弟节点)
-  if (fiber.child) return fiber.child;
-  if (fiber.sibling) return fiber.sibling;
-  return fiber.parent?.sibling;
+  //notes  4.返回下一个任务 (子节点 or 兄弟节点 or (向上一级)找-> 父节点的兄弟节点)
+  if (fiber.child) return fiber.child; //子节点
+  if (fiber.sibling) return fiber.sibling; //兄弟节点
+  return fiber.parent?.sibling; //父节点的兄弟节点
 }
 
+// fiberRoot 初始化时就是wipRoot
 function commitRoot(fiberRoot) {
   commitWork(fiberRoot.child);
+  currentRoot = fiberRoot;
   wipRoot = null;
 }
 
@@ -60,9 +63,18 @@ function commitWork(fiber) {
   if (!fiber) return;
   let fiberParent = fiber.parent;
   while (!fiberParent.dom) {
+    //向上查找有效父节点,挂在当前节点到父节点,函数组属于件特殊组件
     fiberParent = fiberParent.parent;
   }
-  fiber.dom && fiberParent?.dom.append(fiber.dom);
+  if (fiber.effectTag === 'update') {
+    // todo 这里根性dom会有null情况,导致报错
+    updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
+  } else if (fiber.effectTag === 'placement') {
+    //初始化创建时,挂载节点
+    if (fiber.dom) {
+      fiberParent?.dom.append(fiber.dom);
+    }
+  }
   fiber.child && commitWork(fiber.child);
   fiber.sibling && commitWork(fiber.sibling);
 }
@@ -87,14 +99,22 @@ function updateHostComponent(fiber) {
   initChildren(fiber, children);
 }
 
+/* 
+initChildren function 
+转换dom树为链表结构
+创建： 初始化是创建节点指针关系
+更新： 比对新旧之间变化，更新节点信息 
+*/
 function initChildren(fiber, children) {
   //notes  3.转换链表,建立指针连接
   let prevChild = null;
-  const oldFiber = fiber.alternate.child;
+  let oldFiber = fiber.alternate?.child;
   children &&
     children.forEach((child, index) => {
+      const isSameType = oldFiber && oldFiber.type === child.type;
+
       let newFiber;
-      if (isUpdate) {
+      if (isSameType) {
         newFiber = {
           type: child.type,
           props: child.props,
@@ -116,7 +136,9 @@ function initChildren(fiber, children) {
           effectTag: 'placement'
         };
       }
-
+      if (oldFiber) {
+        oldFiber = oldFiber.sibling;
+      }
       if (index === 0) {
         fiber.child = newFiber;
       } else {
@@ -145,13 +167,11 @@ function createDom(type) {
   }
 }
 function update() {
-  console.log('update');
   wipRoot = {
     dom: currentRoot.dom,
     props: currentRoot.props,
     alternate: currentRoot
   };
-
   nextWorkOfUnit = wipRoot;
 }
 
