@@ -1,27 +1,38 @@
-const createTextNode = nodeValue => ({ type: 'TEXT_ELEMENT', props: { nodeValue } });
+function createTextNode(text) {
+  return {
+    type: 'TEXT_ELEMENT',
+    props: {
+      nodeValue: text,
+      children: []
+    }
+  };
+}
 function createElement(type, props, ...children) {
   return {
     type,
     props: {
       ...props,
-      // children: children.map(child => (typeof child === 'string' ? createTextNode(child) : child)),
       children: children.map(child => {
-        return typeof child === 'string' ? createTextNode(child) : child;
+        const isTextNode = typeof child === 'string' || typeof child === 'number';
+        return isTextNode ? createTextNode(child) : child;
       })
     }
   };
 }
 
-let root = null;
+let wipRoot = null;
+let currentRoot = null;
 let nextWorkOfUnit = null;
+
 function workLoop(deadline) {
   let shouldYield = false; //是否需要暂停次任务
   while (!shouldYield && nextWorkOfUnit) {
+    //每次处理完后返回下一个节点,先找 child ,没有child再找sibling,再找父节点的sibling,知道最后一个节点,返回null
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
     shouldYield = deadline.timeRemaining() < 1; //剩余时间小于 1,就暂停
   }
-  if (!nextWorkOfUnit && root) {
-    commitRoot(root);
+  if (!nextWorkOfUnit && wipRoot) {
+    commitRoot(wipRoot);
   }
   requestIdleCallback(workLoop);
 }
@@ -30,30 +41,40 @@ requestIdleCallback(workLoop);
 
 function performWorkOfUnit(fiber) {
   // const isFunctionComponent = typeof fiber.type === 'function';
-
   if (typeof fiber.type === 'function') {
     updateFunctionComponent(fiber);
   } else {
     updateHostComponent(fiber);
   }
-  //notes  4.返回下一个任务 (子节点 or 兄弟节点)
-  if (fiber.child) return fiber.child;
-  if (fiber.sibling) return fiber.sibling;
-  return fiber.parent?.sibling;
+  //notes  4.返回下一个任务 (子节点 or 兄弟节点 or (向上一级)找-> 父节点的兄弟节点)
+  if (fiber.child) return fiber.child; //子节点
+  if (fiber.sibling) return fiber.sibling; //兄弟节点
+  return fiber.parent?.sibling; //父节点的兄弟节点
 }
 
+// fiberRoot 初始化时就是wipRoot
 function commitRoot(fiberRoot) {
-  //  console.log('rootDom', rootDom);
   commitWork(fiberRoot.child);
-  root = null;
+  currentRoot = fiberRoot;
+  wipRoot = null;
 }
+
 function commitWork(fiber) {
   if (!fiber) return;
   let fiberParent = fiber.parent;
   while (!fiberParent.dom) {
+    //向上查找有效父节点,挂在当前节点到父节点,函数组属于件特殊组件
     fiberParent = fiberParent.parent;
   }
-  fiber.dom && fiberParent?.dom.append(fiber.dom);
+  if (fiber.effectTag === 'update') {
+    // todo 这里根性dom会有null情况,导致报错
+    updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
+  } else if (fiber.effectTag === 'placement') {
+    //初始化创建时,挂载节点
+    if (fiber.dom) {
+      fiberParent?.dom.append(fiber.dom);
+    }
+  }
   fiber.child && commitWork(fiber.child);
   fiber.sibling && commitWork(fiber.sibling);
 }
@@ -74,24 +95,50 @@ function updateHostComponent(fiber) {
     // fiber.parent?.dom.append(dom);
   }
 
-  const children = fiber.props?.children;
+  const children = fiber.props.children;
   initChildren(fiber, children);
 }
 
+/* 
+initChildren function 
+转换dom树为链表结构
+创建： 初始化是创建节点指针关系
+更新： 比对新旧之间变化，更新节点信息 
+*/
 function initChildren(fiber, children) {
   //notes  3.转换链表,建立指针连接
   let prevChild = null;
-  // const children = fiber.props.children;
+  let oldFiber = fiber.alternate?.child;
   children &&
     children.forEach((child, index) => {
-      const newFiber = {
-        type: child.type,
-        props: child.props,
-        parent: fiber,
-        sibling: null,
-        dom: null,
-        child: null
-      };
+      const isSameType = oldFiber && oldFiber.type === child.type;
+
+      let newFiber;
+      if (isSameType) {
+        newFiber = {
+          type: child.type,
+          props: child.props,
+          child: null,
+          parent: fiber,
+          sibling: null,
+          dom: oldFiber.dom,
+          effectTag: 'update',
+          alternate: oldFiber
+        };
+      } else {
+        newFiber = {
+          type: child.type,
+          props: child.props,
+          child: null,
+          parent: fiber,
+          sibling: null,
+          dom: null,
+          effectTag: 'placement'
+        };
+      }
+      if (oldFiber) {
+        oldFiber = oldFiber.sibling;
+      }
       if (index === 0) {
         fiber.child = newFiber;
       } else {
@@ -100,40 +147,48 @@ function initChildren(fiber, children) {
       prevChild = newFiber;
     });
 }
+
 function updateProps(dom, props) {
   Object.keys(props).forEach(key => {
     if (key !== 'children') {
-      dom[key] = props[key];
+      if (key.startsWith('on')) {
+        const eventType = key.slice(2).toLowerCase();
+        dom.addEventListener(eventType, props[key]);
+      } else {
+        dom[key] = props[key];
+      }
     }
   });
 }
 
 function createDom(type) {
-  console.log('type', type);
   if (type) {
     return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
   }
 }
+function update() {
+  wipRoot = {
+    dom: currentRoot.dom,
+    props: currentRoot.props,
+    alternate: currentRoot
+  };
+  nextWorkOfUnit = wipRoot;
+}
 
 function render(el, container) {
-  nextWorkOfUnit = {
+  wipRoot = {
+    alternate: container,
     dom: container,
     props: {
       children: [el]
     }
   };
-  root = nextWorkOfUnit;
-  // requestIdleCallback(workLoop);
-
-  /*  const dom = createDom(el.type);
-  updateProps(dom, el.props);
-  const children = el.props.children;
-  children && children.forEach(child => render(child, dom));
-  container.append(dom); */
+  nextWorkOfUnit = wipRoot;
 }
 
 const React = {
   render,
+  update,
   createElement
 };
 
