@@ -67,7 +67,7 @@ function commitWork(fiber) {
     fiberParent = fiberParent.parent;
   }
   if (fiber.effectTag === 'update') {
-    // todo 这里根性dom会有null情况,导致报错
+    // todo 这里更新dom会有null情况,导致报错
     updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
   } else if (fiber.effectTag === 'placement') {
     //初始化创建时,挂载节点
