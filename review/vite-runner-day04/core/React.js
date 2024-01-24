@@ -1,3 +1,6 @@
+/* 
+自由实现,添加注释
+*/
 function createTextNode(text) {
   return {
     type: 'TEXT_ELEMENT',
@@ -20,19 +23,17 @@ function createElement(type, props, ...children) {
   };
 }
 
-let wipRoot = null;
-let currentRoot = null;
+let root = null;
+let prevRoot = null; //每次update 都更新, 保存每一次结束后新的链表数据,用以新旧对比(对应节点指针指向)
 let nextWorkOfUnit = null;
-
 function workLoop(deadline) {
   let shouldYield = false; //是否需要暂停次任务
   while (!shouldYield && nextWorkOfUnit) {
-    //每次处理完后返回下一个节点,先找 child ,没有child再找sibling,再找父节点的sibling,知道最后一个节点,返回null
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
     shouldYield = deadline.timeRemaining() < 1; //剩余时间小于 1,就暂停
   }
-  if (!nextWorkOfUnit && wipRoot) {
-    commitRoot(wipRoot);
+  if (!nextWorkOfUnit && root) {
+    commitRoot(root);
   }
   requestIdleCallback(workLoop);
 }
@@ -41,40 +42,32 @@ requestIdleCallback(workLoop);
 
 function performWorkOfUnit(fiber) {
   // const isFunctionComponent = typeof fiber.type === 'function';
+
   if (typeof fiber.type === 'function') {
     updateFunctionComponent(fiber);
   } else {
     updateHostComponent(fiber);
   }
-  //notes  4.返回下一个任务 (子节点 or 兄弟节点 or (向上一级)找-> 父节点的兄弟节点)
-  if (fiber.child) return fiber.child; //子节点
-  if (fiber.sibling) return fiber.sibling; //兄弟节点
-  return fiber.parent?.sibling; //父节点的兄弟节点
+  //notes  4.返回下一个任务 (子节点 or 兄弟节点)
+  if (fiber.child) return fiber.child;
+  if (fiber.sibling) return fiber.sibling;
+  return fiber.parent?.sibling;
 }
 
-// fiberRoot 初始化时就是wipRoot
 function commitRoot(fiberRoot) {
   commitWork(fiberRoot.child);
-  currentRoot = fiberRoot;
-  wipRoot = null;
+  prevRoot = root;
+  root = null;
 }
 
 function commitWork(fiber) {
   if (!fiber) return;
   let fiberParent = fiber.parent;
   while (!fiberParent.dom) {
-    //向上查找有效父节点,挂在当前节点到父节点,函数组属于件特殊组件
     fiberParent = fiberParent.parent;
   }
-  if (fiber.effectTag === 'update') {
-    // todo 这里根性dom会有null情况,导致报错
-    updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
-  } else if (fiber.effectTag === 'placement') {
-    //初始化创建时,挂载节点
-    if (fiber.dom) {
-      fiberParent?.dom.append(fiber.dom);
-    }
-  }
+
+  fiber.dom && fiberParent?.dom.append(fiber.dom);
   fiber.child && commitWork(fiber.child);
   fiber.sibling && commitWork(fiber.sibling);
 }
@@ -99,47 +92,28 @@ function updateHostComponent(fiber) {
   initChildren(fiber, children);
 }
 
+
+
+
 /* 
-initChildren function 
-转换dom树为链表结构
-创建： 初始化是创建节点指针关系
-更新： 比对新旧之间变化，更新节点信息 
+传入filer 递归建立指针关系
 */
 function initChildren(fiber, children) {
   //notes  3.转换链表,建立指针连接
   let prevChild = null;
-  let oldFiber = fiber.alternate?.child;
+  // const children = fiber.props.children;
   children &&
     children.forEach((child, index) => {
-      const isSameType = oldFiber && oldFiber.type === child.type;
-
-      let newFiber;
-      if (isSameType) {
-        newFiber = {
-          type: child.type,
-          props: child.props,
-          child: null,
-          parent: fiber,
-          sibling: null,
-          dom: oldFiber.dom,
-          effectTag: 'update',
-          alternate: oldFiber
-        };
-      } else {
-        newFiber = {
-          type: child.type,
-          props: child.props,
-          child: null,
-          parent: fiber,
-          sibling: null,
-          dom: null,
-          effectTag: 'placement'
-        };
-      }
-      if (oldFiber) {
-        oldFiber = oldFiber.sibling;
-      }
+      const newFiber = {
+        type: child.type,
+        props: child.props,
+        parent: fiber,
+        sibling: null, //建立兄弟节点指针
+        dom: null,
+        child: null //建立子节点指针
+      };
       if (index === 0) {
+      // 每一层第一个节点是fiber的第一个子节点，其他的是该节点的同层节点（兄弟节点）
         fiber.child = newFiber;
       } else {
         prevChild.sibling = newFiber;
@@ -166,24 +140,26 @@ function createDom(type) {
     return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
   }
 }
-function update() {
-  wipRoot = {
-    dom: currentRoot.dom,
-    props: currentRoot.props,
-    alternate: currentRoot
-  };
-  nextWorkOfUnit = wipRoot;
-}
 
 function render(el, container) {
-  wipRoot = {
-    alternate: container,
+  nextWorkOfUnit = {
     dom: container,
     props: {
       children: [el]
     }
   };
-  nextWorkOfUnit = wipRoot;
+  root = nextWorkOfUnit;
+}
+
+function update() {
+  // nextWorkOfUnit 变化激活调用 workLoop , 在requestIdleCallback(workLoop)监听
+  nextWorkOfUnit = {
+    dom: prevRoot.dom,
+    props: prevRoot.props,
+    alternate: prevRoot
+  };
+  root = nextWorkOfUnit;
+  // prevRoot = nextWorkOfUnit
 }
 
 const React = {
