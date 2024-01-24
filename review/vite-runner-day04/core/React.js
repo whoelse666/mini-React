@@ -82,7 +82,7 @@ function commitWork(fiber) {
 //处理函数组件
 function updateFunctionComponent(fiber) {
   const children = [fiber.type(fiber.props)];
-  initChildren(fiber, children);
+  reconcileChildren(fiber, children);
 }
 
 //处理普通组件
@@ -91,21 +91,21 @@ function updateHostComponent(fiber) {
   if (!fiber.dom) {
     const dom = (fiber.dom = createDom(fiber.type));
     //notes  2.设置props
-    updateProps(dom, fiber.props);
+    updateProps(dom, fiber.props, {});
     // fiber.parent?.dom.append(dom);
   }
 
   const children = fiber.props.children;
-  initChildren(fiber, children);
+  reconcileChildren(fiber, children);
 }
 
 /* 
-initChildren function 
+reconcileChildren function 
 转换dom树为链表结构
 创建： 初始化是创建节点指针关系
 更新： 比对新旧之间变化，更新节点信息 
 */
-function initChildren(fiber, children) {
+function reconcileChildren(fiber, children) {
   //notes  3.转换链表,建立指针连接
   let prevChild = null;
   let oldFiber = fiber.alternate?.child;
@@ -148,14 +148,26 @@ function initChildren(fiber, children) {
     });
 }
 
-function updateProps(dom, props) {
-  Object.keys(props).forEach(key => {
+function updateProps(dom, nextProps, prevProps) {
+  Object.keys(prevProps).forEach(key => {
     if (key !== 'children') {
-      if (key.startsWith('on')) {
-        const eventType = key.slice(2).toLowerCase();
-        dom.addEventListener(eventType, props[key]);
-      } else {
-        dom[key] = props[key];
+      if (!(key in nextProps)) {
+        // 旧的属性，在新的节点里没有，所以疝出属性
+        dom.removeAttribute(key);
+      }
+    }
+  });
+
+  Object.keys(nextProps).forEach(key => {
+    if (key !== 'children') {
+      if (nextProps[key] !== prevProps[key]) {
+        if (key.startsWith('on')) {
+          const eventType = key.slice(2).toLowerCase();
+          dom.removeEventListener(eventType, prevProps[key]);
+          dom.addEventListener(eventType, nextProps[key]);
+        } else {
+          dom[key] = nextProps[key];
+        }
       }
     }
   });
