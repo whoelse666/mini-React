@@ -7,7 +7,7 @@ function Counter({ num }) {
   function handleClick() {
     console.log('click');
     count++;
-    count1 = count1 + count;
+    count1 = count + 3;
     props = {};
     React.update();
   }

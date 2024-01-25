@@ -66,8 +66,14 @@ function commitWork(fiber) {
   while (!fiberParent.dom) {
     fiberParent = fiberParent.parent;
   }
+  if (fiber.effectTag === 'update') {
+    updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
+  } else if (fiber.effectTag === 'placement') {
+    //初始化创建时,挂载节点
 
-  fiber.dom && fiberParent?.dom.append(fiber.dom);
+    fiber.dom && fiberParent?.dom.append(fiber.dom);
+  }
+
   fiber.child && commitWork(fiber.child);
   fiber.sibling && commitWork(fiber.sibling);
 }
@@ -75,7 +81,7 @@ function commitWork(fiber) {
 //处理函数组件
 function updateFunctionComponent(fiber) {
   const children = [fiber.type(fiber.props)];
-  initChildren(fiber, children);
+  reconcileChildren(fiber, children);
 }
 
 //处理普通组件
@@ -87,33 +93,50 @@ function updateHostComponent(fiber) {
     updateProps(dom, fiber.props);
     // fiber.parent?.dom.append(dom);
   }
-
   const children = fiber.props.children;
-  initChildren(fiber, children);
+  reconcileChildren(fiber, children);
 }
-
-
-
 
 /* 
 传入filer 递归建立指针关系
 */
-function initChildren(fiber, children) {
+function reconcileChildren(fiber, children) {
   //notes  3.转换链表,建立指针连接
   let prevChild = null;
-  // const children = fiber.props.children;
+  let oldFiber = fiber.alternate?.child;
   children &&
     children.forEach((child, index) => {
-      const newFiber = {
-        type: child.type,
-        props: child.props,
-        parent: fiber,
-        sibling: null, //建立兄弟节点指针
-        dom: null,
-        child: null //建立子节点指针
-      };
+      const isSameType = oldFiber && oldFiber.type === child.type;
+      let newFiber;
+      if (isSameType) {
+        // update
+        newFiber = {
+          type: child.type,
+          props: child.props,
+          parent: fiber,
+          sibling: null,
+          dom: oldFiber.dom,
+          child: null,
+          alternate: oldFiber,
+          effectTag: 'update'
+        };
+      } else {
+        // create
+        newFiber = {
+          type: child.type,
+          props: child.props,
+          parent: fiber,
+          sibling: null, //建立兄弟节点指针
+          dom: null,
+          child: null, //建立子节点指针
+          effectTag: 'placement'
+        };
+      }
+      if (oldFiber) {
+        oldFiber = oldFiber.sibling;
+      }
       if (index === 0) {
-      // 每一层第一个节点是fiber的第一个子节点，其他的是该节点的同层节点（兄弟节点）
+        // 每一层第一个节点是fiber的第一个子节点，其他的是该节点的同层节点（兄弟节点）
         fiber.child = newFiber;
       } else {
         prevChild.sibling = newFiber;
@@ -122,14 +145,25 @@ function initChildren(fiber, children) {
     });
 }
 
-function updateProps(dom, props) {
-  Object.keys(props).forEach(key => {
+function updateProps(dom, nextProps, prevProps = {}) {
+  Object.keys(prevProps).forEach(key => {
+    if (key !== 'children') {
+      if (!(key in nextProps)) {
+        dom.removeAttribute(key);
+      }
+    }
+  });
+
+  Object.keys(nextProps).forEach(key => {
     if (key !== 'children') {
       if (key.startsWith('on')) {
         const eventType = key.slice(2).toLowerCase();
-        dom.addEventListener(eventType, props[key]);
+        dom.removeEventListener(eventType, prevProps[key]);
+        dom.addEventListener(eventType, nextProps[key]);
       } else {
-        dom[key] = props[key];
+        if (dom) {
+          dom[key] = nextProps[key];
+        }
       }
     }
   });
@@ -144,6 +178,7 @@ function createDom(type) {
 function render(el, container) {
   nextWorkOfUnit = {
     dom: container,
+    alternate: container,
     props: {
       children: [el]
     }
