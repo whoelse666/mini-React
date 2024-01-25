@@ -1,10 +1,9 @@
-import React from "./React.js";
-
+import React from './React.js';
 const ReactDom = {
   createRoot(container) {
     return {
-      render(el) {
-        React.render(el, container);
+      render(rootDom) {
+        React.render(rootDom, container);
       }
     };
   }
