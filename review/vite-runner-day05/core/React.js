@@ -41,30 +41,46 @@ function workLoop(deadline) {
 requestIdleCallback(workLoop);
 
 function performWorkOfUnit(fiber) {
-  // const isFunctionComponent = typeof fiber.type === 'function';
-  if (typeof fiber.type === 'function') {
+  const isFunctionComponent = typeof fiber.type === 'function';
+  if (isFunctionComponent) {
     updateFunctionComponent(fiber);
   } else {
     updateHostComponent(fiber);
   }
   //notes  4.返回下一个任务 (子节点 or 兄弟节点 or (向上一级)找-> 父节点的兄弟节点)
   if (fiber.child) return fiber.child; //子节点
-  if (fiber.sibling) return fiber.sibling; //兄弟节点
-  return fiber.parent?.sibling; //父节点的兄弟节点
+  /*   if (fiber.sibling) return fiber.sibling; //兄弟节点
+  return fiber.parent?.sibling; //父节点的兄弟节点 */
+  if (fiber.child) {
+    return fiber.child;
+  }
+
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) return nextFiber.sibling;
+    nextFiber = nextFiber.parent;
+  }
 }
 
-function commitDeletion(fiber, index) {
-  if (!fiber) return;
-  console.log('commitDeletion', fiber, index);
-  fiber.dom && fiber.parent?.dom.removeChild(fiber.dom);
+function commitDeletion(fiber) {
+  if (fiber.dom) {
+    let fiberParent = fiber.parent;
+    while (!fiberParent.dom) {
+      fiberParent = fiberParent.parent;
+    }
+    fiberParent.dom.removeChild(fiber.dom);
+  } else {
+    commitDeletion(fiber.child);
+  }
 }
-// fiberRoot 初始化时就是wipRoot
-function commitRoot(fiberRoot) {
+// wipFiberRoot 初始化时就是 wipRoot
+function commitRoot(wipFiberRoot) {
   // fiberParent?.dom?.removeChild(fiber.dom);
   deletions.forEach(commitDeletion);
-  commitWork(fiberRoot.child);
-  currentRoot = fiberRoot;
-  wipRoot = null;
+  commitWork(wipFiberRoot.child);
+  currentRoot = wipFiberRoot;
+  wipFiberRoot = null;
+  deletions = [];
 }
 
 function commitWork(fiber) {
@@ -80,11 +96,11 @@ function commitWork(fiber) {
   } else if (fiber.effectTag === 'placement') {
     //初始化创建时,挂载节点
     if (fiber.dom) {
-      fiberParent?.dom.append(fiber.dom);
+      fiberParent.dom.append(fiber.dom);
     }
   }
-  fiber.child && commitWork(fiber.child);
-  fiber.sibling && commitWork(fiber.sibling);
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
 }
 
 //处理函数组件
@@ -120,7 +136,6 @@ function reconcileChildren(fiber, children) {
   children &&
     children.forEach((child, index) => {
       const isSameType = oldFiber && oldFiber.type === child.type;
-
       let newFiber;
       if (isSameType) {
         newFiber = {
@@ -143,10 +158,12 @@ function reconcileChildren(fiber, children) {
           dom: null,
           effectTag: 'placement'
         };
+        if (oldFiber) {
+          deletions.push(oldFiber);
+        }
       }
       if (oldFiber) {
         oldFiber = oldFiber.sibling;
-        deletions.push(oldFiber);
       }
       if (index === 0) {
         fiber.child = newFiber;
@@ -161,7 +178,7 @@ function updateProps(dom, nextProps, prevProps) {
   Object.keys(prevProps).forEach(key => {
     if (key !== 'children') {
       if (!(key in nextProps)) {
-        // 旧的属性，在新的节点里没有，所以疝出属性
+        // 旧的属性，在新的节点里没有，所以删除属性
         dom.removeAttribute(key);
       }
     }
@@ -183,9 +200,7 @@ function updateProps(dom, nextProps, prevProps) {
 }
 
 function createDom(type) {
-  if (type) {
-    return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
-  }
+  return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
 }
 function update() {
   wipRoot = {
@@ -198,7 +213,7 @@ function update() {
 
 function render(el, container) {
   wipRoot = {
-    alternate: container,
+    // alternate: container,
     dom: container,
     props: {
       children: [el]
