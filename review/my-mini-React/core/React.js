@@ -1,9 +1,16 @@
- 
-
 const React = {
   render,
   createElement
 };
 
-export default React;
+function getNewName(name, age) {}
 
+getNewName();
+getNewName();
+getNewName();
+getNewName();
+getNewName();
+getNewName();
+getNewName();
+
+export default React;
