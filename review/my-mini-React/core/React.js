@@ -3,6 +3,4 @@ const React = {
   createElement
 };
 
-
-
 export default React;
