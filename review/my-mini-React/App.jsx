@@ -9,6 +9,7 @@ const dom1 = (
     </div>
   </div>
 );
+
 // const App = React.createElement('div', { id: 'app' }, 'hi- ', 'mini-react');
 const App = React.createElement('div', { id: 'app' }, dom1);
 export default App;
