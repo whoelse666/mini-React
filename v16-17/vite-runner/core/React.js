@@ -287,6 +287,7 @@ function useState(initial) {
   stateHooks.push(stateHook);
   currentFiber.stateHooks = stateHooks;
   function setState(action) {
+    // 对不是function的在action 进行处理
     const eagerState = typeof action === 'function' ? action(stateHook.state) : action;
     if (eagerState === stateHook.state) {
       return;
