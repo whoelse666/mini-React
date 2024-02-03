@@ -29,11 +29,10 @@ function updateProps(dom, props) {
     });
 }
 
-function initChildren(fiber) {
-  const children = fiber.props.children;
+/* 创建 fiber以及儿子节点之间指针 结构，index =0 child ，index>1 则为child的sibling */
+function initChildren(fiber, children) {
   let prevChild = null;
   children.forEach((child, i) => {
-    console.log('child', child);
     let newFiber = {
       type: child.type,
       props: child.props,
@@ -44,23 +43,59 @@ function initChildren(fiber) {
     };
     if (i === 0) {
       fiber.child = newFiber;
+      // prevChild = fiber.child
     } else {
       prevChild.sibling = newFiber;
+      // prevChild = prevChild.sibling
     }
     prevChild = newFiber;
   });
 }
 
-let nextWorkOfUnit = null;
-function performWorkOfUnit(fiber) {
-  console.log('fiber', fiber);
+function createDom(type) {
+  return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
+}
+function updateHostComponent(fiber) {
   if (!fiber.dom) {
-    const dom = fiber.type === 'TEXT_ELEMENT' ? document.createTextNode(fiber.nodeVal) : document.createElement(fiber.type);
-    fiber.dom = dom;
-    fiber.parent?.dom.append(fiber.dom);
+    const dom = (fiber.dom = createDom(fiber.type));
     updateProps(dom, fiber.props);
   }
-  fiber && initChildren(fiber);
+  const children = fiber.props.children;
+  initChildren(fiber, children);
+}
+
+function updateFunctionComponent(fiber) {
+  // console.log('tagType', isFunctionCom, fiber.type());
+  // console.log('tagType', fiber.type(fiber.props));
+  // const type = fiber.type().type;
+  // dom = type === 'TEXT_ELEMENT' ? document.createTextNode(fiber.nodeVal) : document.createElement(type);
+  // // fiber.type = type;
+  // // console.log(' fiber', fiber);
+  // console.log(fiber.type(fiber.props).props.children);
+  // console.log(fiber.type(fiber.props));
+  // // fiber.props.children = [fiber.type(fiber.props)];
+  // // fiber.props.children = fiber.type(fiber.props).props.children;
+
+  const children = [fiber.type(fiber.props)];
+  initChildren(fiber, children);
+}
+
+let nextWorkOfUnit = null;
+let isInit = 1;
+function performWorkOfUnit(fiber) {
+  const isFunctionComponent = typeof fiber.type === 'function';
+  if (!isFunctionComponent) {
+    updateHostComponent(fiber);
+  } else {
+    updateFunctionComponent(fiber);
+  }
+  let fiberParent = isInit ? fiber : fiber.parent;
+  isInit = 0;
+  while (!fiberParent.dom) {
+    fiberParent = fiberParent.parent;
+  }
+  fiberParent?.dom.append(fiber.dom);
+
   if (fiber.child) {
     return fiber.child;
   }
@@ -72,14 +107,10 @@ function performWorkOfUnit(fiber) {
   }
 }
 
-let loop = 1;
-
 function workLoop(deadLine) {
-  loop++;
   let shouldYeld = false;
   while (!shouldYeld && nextWorkOfUnit) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
-    console.log(deadLine.timeRemaining());
     shouldYeld = deadLine.timeRemaining() < 5;
   }
   // requestIdleCallback(workLoop);
