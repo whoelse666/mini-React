@@ -29,11 +29,9 @@ function updateProps(dom, props) {
     });
 }
 
-function initChildren(fiber) {
-  const children = fiber.props.children;
+function initChildren(fiber, children) {
   let prevChild = null;
   children.forEach((child, i) => {
-    console.log('child', child);
     let newFiber = {
       type: child.type,
       props: child.props,
@@ -51,16 +49,23 @@ function initChildren(fiber) {
   });
 }
 
-let nextWorkOfUnit = null;
-function performWorkOfUnit(fiber) {
-  console.log('fiber', fiber);
-  if (!fiber.dom) {
-    const dom = fiber.type === 'TEXT_ELEMENT' ? document.createTextNode(fiber.nodeVal) : document.createElement(fiber.type);
-    fiber.dom = dom;
-    fiber.parent?.dom.append(fiber.dom);
-    updateProps(dom, fiber.props);
+function createDom(type) {
+  if (type) {
+    return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type?.type);
   }
-  fiber && initChildren(fiber);
+}
+function performWorkOfUnit(fiber) {
+  const isFunctionComponent = typeof fiber.type === 'function';
+  if (!isFunctionComponent)  {
+    if (!fiber.dom) {
+      const dom = (fiber.dom = createDom(fiber.type));
+      // fiber.parent?.dom.append(fiber.dom);
+      updateProps(dom, fiber.props);
+    }
+  }
+
+  const children = isFunctionComponent ? [fiber.type()] : fiber.props.children;
+  fiber && initChildren(fiber, children);
   if (fiber.child) {
     return fiber.child;
   }
@@ -72,20 +77,44 @@ function performWorkOfUnit(fiber) {
   }
 }
 
-let loop = 1;
-
+let nextWorkOfUnit = null;
+let root = null;
 function workLoop(deadLine) {
-  loop++;
   let shouldYeld = false;
   while (!shouldYeld && nextWorkOfUnit) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit);
-    console.log(deadLine.timeRemaining());
+    // console.log(deadLine.timeRemaining());
     shouldYeld = deadLine.timeRemaining() < 5;
   }
+
+  if (!nextWorkOfUnit && root) {
+    commitRoot();
+  }
+
   // requestIdleCallback(workLoop);
   nextWorkOfUnit && requestIdleCallback(workLoop);
 }
 requestIdleCallback(workLoop);
+
+function commitRoot() {
+  commitWork(root.child);
+  root = null;
+}
+
+function commitWork(fiber) {
+  if (!fiber) {
+    return;
+  }
+  let fiberParent = fiber.parent;
+  while (!fiberParent.dom) {
+    fiberParent = fiberParent.parent;
+  }
+  if (fiber.dom) {
+    fiberParent.dom.append(fiber.dom);
+  }
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
+}
 
 function render(el, container) {
   // 初始化时 #root 为真实dom，再包装成vDom后使用
@@ -95,6 +124,7 @@ function render(el, container) {
       children: [el]
     }
   };
+  root = nextWorkOfUnit;
 }
 
 const React = {
