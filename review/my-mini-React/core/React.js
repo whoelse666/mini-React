@@ -24,7 +24,13 @@ function updateProps(dom, props) {
   props &&
     Object.keys(props).forEach(key => {
       if (key !== 'children') {
-        dom[key] = props[key];
+        if (key.startsWith('on')) {
+          const eventType = key.slice(2).toLowerCase();
+          dom.removeEventListener(eventType, props[key]);
+          dom.addEventListener(eventType, props[key]);
+        } else {
+          dom[key] = props[key];
+        }
       }
     });
 }
@@ -50,27 +56,27 @@ function initChildren(fiber, children) {
 }
 
 function createDom(type) {
-  if (type) {
-    return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type?.type);
-  }
+  return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
 }
-
 function updateFunctionComponent(fiber) {
   if (!fiber) return;
   const children = [fiber.type()];
   initChildren(fiber, children);
 }
 
+//处理普通组件
 function updateHostComponent(fiber) {
+  //notes  1.创建dom
   if (!fiber.dom) {
-    const dom = (fiber.dom = createDom(fiber.type));
-    updateProps(dom, fiber.props);
+    fiber.dom = createDom(fiber.type);
+    const dom = fiber.dom;
+    //notes  2.设置props
+    updateProps(dom, fiber.props, {});
   }
 
   const children = fiber.props.children;
   initChildren(fiber, children);
 }
-
 function performWorkOfUnit(fiber) {
   const isFunctionComponent = typeof fiber.type === 'function';
   if (isFunctionComponent) {
@@ -78,20 +84,6 @@ function performWorkOfUnit(fiber) {
   } else {
     updateHostComponent(fiber);
   }
-  /*   if (!isFunctionComponent) {
-    if (!fiber.dom) {
-      const dom = (fiber.dom = createDom(fiber.type));
-      // fiber.parent?.dom.append(fiber.dom);
-      updateProps(dom, fiber.props);
-    }
-  }
-  const children = isFunctionComponent ? [fiber.type()] : fiber.props.children;
-  fiber && initChildren(fiber, children);
-  */
-
-  /*   if (fiber.child) return fiber.child; //子节点
-  if (fiber.sibling) return fiber.sibling; //兄弟节点
-  return fiber.parent?.sibling; //父节点的兄弟节点 */
 
   if (fiber.child) return fiber.child; //子节点
   let nextFiber = fiber;
@@ -134,7 +126,8 @@ function commitWork(fiber) {
     fiberParent = fiberParent.parent;
   }
   if (fiber.dom) {
-    fiberParent.dom.append(fiber.dom);
+    //初始化创建时,挂载节点
+    fiberParent?.dom.append(fiber.dom);
   }
   commitWork(fiber.child);
   commitWork(fiber.sibling);
