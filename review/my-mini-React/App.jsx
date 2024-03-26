@@ -8,16 +8,17 @@ import React from './core/React.js';
 //     {/* <button onClick={ handle1 }>click</button> */}
 //   </div>
 // );
-let num =0 
+let num = 0;
 const App = () => {
   function handle1() {
-    num++
+    console.log('num', num);
+    num++;
   }
   return (
     <div>
       111
       <CountP></CountP>
-      <button onClick={ handle1 }>click</button>
+      <button onClick={handle1}>click</button>
     </div>
   );
 };
