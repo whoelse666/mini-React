@@ -7,7 +7,7 @@ let stateHooks = [],
   stateHookIndex = 0;
 function createTextNode(text) {
   return {
-    type: 'TEXT_ELEMENT',
+    type: "TEXT_ELEMENT",
     props: {
       nodeValue: text,
       children: []
@@ -21,7 +21,7 @@ function createElement(type, props, ...children) {
     props: {
       ...props,
       children: children.map(child => {
-        const isTextNode = typeof child === 'string' || typeof child === 'number';
+        const isTextNode = typeof child === "string" || typeof child === "number";
         return isTextNode ? createTextNode(child) : child;
       })
     }
@@ -51,7 +51,7 @@ function workLoop(deadline) {
   if (!nextWorkOfUnit && wipRoot) {
     commitRoot();
   }
-// todos update
+  // todos update
   if (nextWorkOfUnit && !wipRoot) {
     wipRoot = currentRoot;
   }
@@ -91,7 +91,6 @@ function commitEffectHooks() {
   }
   function runCleanUp(fiber) {
     if (!fiber) return;
-    console.log('fiber.effectHooks', fiber.effectHooks);
     // runCleanUp 在run 之前执行,当前 fiber.effectHooks.cleanup还没有
     fiber.alternate?.effectHooks?.forEach((hook, index) => {
       if (hook.deps.length <= 0) return;
@@ -116,15 +115,13 @@ function commitDeletion(fiber) {
 
 function commitWork(fiber) {
   if (!fiber) return;
-
   let fiberParent = fiber.parent;
   while (!fiberParent.dom) {
     fiberParent = fiberParent.parent;
   }
-
-  if (fiber.effectTag === 'update' && fiber.dom) {
+  if (fiber.effectTag === "update" && fiber.dom) {
     updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
-  } else if (fiber.effectTag === 'placement') {
+  } else if (fiber.effectTag === "placement") {
     if (fiber.dom) {
       fiberParent.dom.append(fiber.dom);
     }
@@ -134,13 +131,13 @@ function commitWork(fiber) {
 }
 
 function createDom(type) {
-  return type === 'TEXT_ELEMENT' ? document.createTextNode('') : document.createElement(type);
+  return type === "TEXT_ELEMENT" ? document.createTextNode("") : document.createElement(type);
 }
 
 function updateProps(dom, nextProps, prevProps) {
   // 1. old 有  new 没有 删除
   Object.keys(prevProps).forEach(key => {
-    if (key !== 'children') {
+    if (key !== "children") {
       if (!(key in nextProps)) {
         dom.removeAttribute(key);
       }
@@ -149,9 +146,9 @@ function updateProps(dom, nextProps, prevProps) {
   // 2. new 有 old 没有 添加
   // 3. new 有 old 有 修改
   Object.keys(nextProps).forEach(key => {
-    if (key !== 'children') {
+    if (key !== "children") {
       if (nextProps[key] !== prevProps[key]) {
-        if (key.startsWith('on')) {
+        if (key.startsWith("on")) {
           const eventType = key.slice(2).toLowerCase();
 
           dom.removeEventListener(eventType, prevProps[key]);
@@ -181,7 +178,7 @@ function reconcileChildren(fiber, children) {
         parent: fiber,
         sibling: null,
         dom: oldFiber.dom,
-        effectTag: 'update',
+        effectTag: "update",
         alternate: oldFiber
       };
     } else {
@@ -193,7 +190,7 @@ function reconcileChildren(fiber, children) {
           parent: fiber,
           sibling: null,
           dom: null,
-          effectTag: 'placement'
+          effectTag: "placement"
         };
       }
 
@@ -219,7 +216,6 @@ function reconcileChildren(fiber, children) {
 
   while (oldFiber) {
     deletions.push(oldFiber);
-
     oldFiber = oldFiber.sibling;
   }
 }
@@ -245,7 +241,7 @@ function updateHostComponent(fiber) {
 }
 
 function performWorkOfUnit(fiber) {
-  const isFunctionComponent = typeof fiber.type === 'function';
+  const isFunctionComponent = typeof fiber.type === "function";
   if (isFunctionComponent) {
     updateFunctionComponent(fiber);
   } else {
@@ -284,6 +280,7 @@ function useState(initial) {
     state: oldHook ? oldHook.state : initial,
     queue: oldHook ? oldHook.queue : [] //统一批量处理useState里的action
   };
+
   stateHook.queue.forEach(action => {
     stateHook.state = action(stateHook.state);
   });
@@ -293,11 +290,12 @@ function useState(initial) {
   currentFiber.stateHooks = stateHooks;
   function setState(action) {
     // 对不是function的在action 进行处理
-    const eagerState = typeof action === 'function' ? action(stateHook.state) : action;
+    const eagerState = typeof action === "function" ? action(stateHook.state) : action;
     if (eagerState === stateHook.state) {
       return;
     }
-    stateHook.queue.push(action);
+        stateHook.queue.push(typeof action === "function" ? action : () => action);
+
     wipRoot = {
       ...currentFiber,
       alternate: currentFiber

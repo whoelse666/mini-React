@@ -219,7 +219,6 @@ function reconcileChildren(fiber, children) {
 
   while (oldFiber) {
     deletions.push(oldFiber);
-
     oldFiber = oldFiber.sibling;
   }
 }
